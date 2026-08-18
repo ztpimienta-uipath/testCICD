@@ -11,7 +11,7 @@ env:
   CLI_VERSION:      '1.0.0'
   NODE_VERSION:     '20'
   SOLUTION_NAME:    'HelloWorldCICD'
-  SOLUTION_DIR:     './my-solution'
+  SOLUTION_DIR:     './HelloWorldCICD'
   OUTPUT_DIR:       './dist'
 
 jobs:
