@@ -1,0 +1,25 @@
+name: Deploy to Dev
+ 
+on: 
+  push: 
+    branches: [ main ] 
+jobs: 
+  deploy-dev: 
+    runs-on: windows-latest 
+    steps: 
+      - uses: actions/checkout@v4 
+      - name: Setup UiPath CLI 
+        run: | 
+          dotnet tool install --global UiPath.CLI --version 25.10.0 
+ 
+  
+      - name: Publish to DEV 
+        run: | 
+          uipcli package publish \ 
+            --project-path "Automation_Ops_Test_RPA/project.json" \ 
+            --orchestrator-url "https://staging.uipath.com/stagingztmp/DemoDevelopment" \ 
+            --orchestrator-folder "Tests" \ 
+            --process-name "CICDHelloWorld" \ 
+            --client-id "${{ secrets.UIPATH_CLIENT_ID }}" \ 
+            --client-secret "${{ secrets.UIPATH_CLIENT_SECRET }}" 
+ 
