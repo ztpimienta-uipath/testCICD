@@ -10,7 +10,7 @@ on:
 env:
   CLI_VERSION:      '1.0.0'
   NODE_VERSION:     '20'
-  SOLUTION_NAME:    'HelloWorldCICD'
+  SOLUTION_NAME:    'HelloWorld_SuccessTest'
   SOLUTION_DIR:     '.'
   OUTPUT_DIR:       './dist'
 
@@ -18,7 +18,7 @@ jobs:
 
   build:
     name: Pack Solution
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     outputs:
       solution_version: ${{ steps.version.outputs.version }}
     steps:
@@ -59,10 +59,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$OUTPUT_DIR"
-          uip solution pack "$SOLUTION_DIR" "$OUTPUT_DIR" \
+          uip rpa pack "$SOLUTION_DIR" "$OUTPUT_DIR" \
             --name "$SOLUTION_NAME" \
-            --version "${{ steps.version.outputs.version }}"
-          ARTIFACT=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.zip" | head -1)
+            --version "1.0.2"
+          ARTIFACT=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.nupkg" | head -1)
           echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
@@ -118,20 +118,33 @@ jobs:
             --client-secret env.UIPATH_CLIENT_SECRET \
             --tenant "$UIPATH_TENANT"
 
-      - name: Publish to tenant feed
+      - name: Upload package to Orchestrator feed
+        id: upload
         shell: bash
         run: |
           set -euo pipefail
-          ARTIFACT=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.zip" | head -1)
-          uip solution publish "$ARTIFACT"
+          PACKAGE=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.nupkg" | head -1)
+          uip or packages upload "$PACKAGE"
 
-      - name: Deploy to Orchestrator
+      - name: Bind package to a process (first run only — safe to re-run)
+        id: bind
         shell: bash
         run: |
           set -euo pipefail
-          uip solution deploy run \
-            --name "${SOLUTION_NAME}-${{ github.run_number }}" \
-            --package-name "$SOLUTION_NAME" \
-            --package-version "${{ needs.build.outputs.solution_version }}" \
-            --folder-name Tests \
-            --parent-folder-path Shared
+          PROCESS_KEY=$(uip or processes create \
+          --folder-path "Tests" \
+          --name "$SOLUTION_NAME" \
+          --package-key "$SOLUTION_NAME" \
+          --package-version "1.0.2" \
+          --output-filter 'Data.Key' --output text || true)
+          
+          # If the process already exists, fall back to updating its version instead
+          if [ -z "$PROCESS_KEY" ]; then
+          PROCESS_KEY=$(uip or processes list --folder-path "Tests" \
+          --name "$SOLUTION_NAME" --output-filter 'Data[0].Key' --output text)
+          uip or processes update-version "$PROCESS_KEY" \
+          --package-version "1.0.2"
+          fi
+          echo "process_key=$PROCESS_KEY" >> "$GITHUB_OUTPUT"
+
+
