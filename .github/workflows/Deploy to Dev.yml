@@ -50,7 +50,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$OUTPUT_DIR"
-          uip rpa pack "$PROJECT_DIR" "$OUTPUT_DIR" --version "$PACKAGE_VERSION"
+          uip rpa pack "$PROJECT_DIR" "$OUTPUT_DIR" \
+            --package-id "$PACKAGE_NAME" \
+            --package-version "$PACKAGE_VERSION"
 
       - uses: actions/upload-artifact@v4
         with:
